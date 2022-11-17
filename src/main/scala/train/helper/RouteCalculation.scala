@@ -11,6 +11,8 @@ case class RouteDist(nodes: String, distance: Int)
 object RouteCalculation {
   def distanceWithProvidedRoute(trainRoutes: TrainRoutes, routeDashSeparated: String): Int = {
     val routeArray = routeDashSeparated.split('-')
+    // Creates pairs of route.
+    // Example providing "A-B-C" would then return List("AB", "BC")
     val routePairs = routeArray.zipWithIndex.dropRight(1).map( routeWithIdx => routeWithIdx._1 + routeArray(routeWithIdx._2 + 1))
 
     routePairs.foldLeft(0){ (dist, pair) => {
@@ -39,9 +41,12 @@ object RouteCalculation {
           if (routeAcc.exists(routeValid=> !routeValid.validated)) {
             val updatedRouteValid = routeAcc.foldLeft(List.empty[RouteValidation])((acc, routeValid) => {
 
+              // Keeps valid routes in the accumulator where valid means that the route ends on the correct station
+              // and also being compliant with the number of stops
               if (routeValid.validated) {
                 acc :+ routeValid
               } else {
+                // Other routes will be added with possible new destinations that are complaint with the number of stops
                 val lastNode = routeValid.nodes.last.toString
                 val possibleNextNodes = allRoutes(lastNode)
 
@@ -115,6 +120,8 @@ object RouteCalculation {
               case _ =>
                 None
 
+            // Once routes have with the last station is matched then its not necessary to locate the next node
+            // Also, the filter of only routes that is less than the currently known most optimal distance
             val routeAcc = possibleNextNodes
               .filterNot(_._1.equals(end))
               .filter(destinationDist => updatedOptimalRouteOpt.forall(_._2 > destinationDist._2))
@@ -149,16 +156,19 @@ object RouteCalculation {
           else
             acceptedRoutes
         } else {
+          // For each recursive loop, track new routes that are compliant with newAcceptedRoutes
           val newAcceptedRoutes = ListBuffer[String]()
           val updatedAccRoutes = routeAcc.foldLeft(List.empty[RouteDist])((acc, routeDist) => {
             val lastNode = routeDist.nodes.last.toString
             val possibleNextNodes = allRoutes(lastNode)
 
+            // Expands each route with all possible next destination with the sum of distance still compliant
             val routeAcc = possibleNextNodes
               .map(nextNode => RouteDist(routeDist.nodes + nextNode._1, routeDist.distance + nextNode._2))
               .filter(updatedRoute => updatedRoute.distance <= maxDistance)
               .toList
 
+            // Tracks route that is compliant
             val routesWithEndNode = routeAcc.filter(_.nodes.last.toString.equals(end)).map(_.nodes)
             newAcceptedRoutes ++= routesWithEndNode
 
